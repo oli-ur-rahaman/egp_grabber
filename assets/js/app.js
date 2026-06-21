@@ -103,7 +103,6 @@ function renderDynamicFields(sourceKey) {
                     type="${isDateField(field.name) ? 'date' : 'text'}"
                     value="${escapeAttribute(isDateField(field.name) ? convertDisplayDateToInput(field.value) : field.value)}"
                     class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600"
-                    ${isDateField(field.name) ? '' : ''}
                 >
             </div>
         `;
@@ -335,6 +334,9 @@ function syncOptionLabels() {
     syncHiddenLabel('ministryId', 'ministryLabel');
     syncHiddenLabel('departmentId', 'departmentLabel');
     syncHiddenLabel('officeId', 'officeLabel');
+    renderSelectionMeta('ministryId', 'ministryMeta', 'Ministry');
+    renderSelectionMeta('departmentId', 'departmentMeta', 'Department');
+    renderSelectionMeta('officeId', 'officeMeta', 'Entity');
 }
 
 function syncHiddenLabel(selectId, hiddenId) {
@@ -342,6 +344,22 @@ function syncHiddenLabel(selectId, hiddenId) {
     const hidden = document.getElementById(hiddenId);
     const option = select.options[select.selectedIndex];
     hidden.value = select.value && option ? option.text : '';
+}
+
+function renderSelectionMeta(selectId, metaId, prefix) {
+    const select = document.getElementById(selectId);
+    const meta = document.getElementById(metaId);
+    if (!select || !meta) {
+        return;
+    }
+
+    const option = select.options[select.selectedIndex];
+    if (!select.value || !option) {
+        meta.textContent = 'No selection';
+        return;
+    }
+
+    meta.textContent = `${prefix} ID ${select.value}: ${option.text}`;
 }
 
 function renderStatus(payload) {
@@ -357,83 +375,6 @@ function renderCounts(counts) {
     document.getElementById('count-APP').textContent = formatNumber(counts.APP || 0);
     document.getElementById('count-eContract').textContent = formatNumber(counts.eContract || 0);
     document.getElementById('count-eExperience').textContent = formatNumber(counts.eExperience || 0);
-}
-
-function renderRuns(runs) {
-    const container = document.getElementById('previousRuns');
-
-    if (!runs.length) {
-        container.innerHTML = '<div class="rounded-2xl border border-dashed border-stone-300 p-5 text-sm text-stone-400">No runs yet.</div>';
-        document.getElementById('activeRunStatus').textContent = 'Idle';
-        populateRunSnapshot(null);
-        return;
-    }
-
-    const activeRun = runs.find((run) => run.status === 'running') || runs[0];
-    document.getElementById('activeRunStatus').textContent = humanize(activeRun.status);
-    const selectedRun = runs.find((run) => Number(run.id) === Number(state.selectedRunId)) || activeRun;
-    populateRunSnapshot(selectedRun);
-
-    container.innerHTML = runs.map((run) => {
-        const isSelected = Number(run.id) === Number(state.selectedRunId);
-        const canResume = run.status === 'stopped';
-
-        return `
-            <article class="rounded-2xl border ${isSelected ? 'border-emerald-500 bg-emerald-50/50' : 'border-stone-200 bg-stone-50'} p-5">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <div class="text-sm font-bold text-stone-900">#${escapeHtml(run.id)} · ${escapeHtml(run.source_label)}</div>
-                        <div class="mt-1 text-xs uppercase tracking-wide text-stone-500">${escapeHtml(humanize(run.status))}</div>
-                    </div>
-                    <button type="button" data-view-run="${escapeAttribute(run.id)}" class="rounded-xl border border-stone-300 bg-white px-3 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-100">
-                        View
-                    </button>
-                </div>
-                <p class="mt-3 text-sm leading-6 text-stone-600">${escapeHtml(run.criteria_summary)}</p>
-                <dl class="mt-4 grid grid-cols-2 gap-3 text-xs text-stone-600">
-                    <div>
-                        <dt class="font-semibold text-stone-500">Pages</dt>
-                        <dd>${formatNumber(run.last_page_scraped || 0)} / ${run.total_pages ? formatNumber(run.total_pages) : '-'}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-semibold text-stone-500">Inserted</dt>
-                        <dd>${formatNumber(run.total_records_inserted || 0)}</dd>
-                    </div>
-                </dl>
-                <div class="mt-4 flex flex-wrap gap-2">
-                    ${canResume ? `<button type="button" data-resume-run="${escapeAttribute(run.id)}" class="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800">Resume</button>` : ''}
-                    <a href="api/export.php?runId=${encodeURIComponent(run.id)}" class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100">Export CSV</a>
-                </div>
-            </article>
-        `;
-    }).join('');
-
-    container.querySelectorAll('[data-resume-run]').forEach((button) => {
-        button.addEventListener('click', () => resumeRun(Number(button.dataset.resumeRun)));
-    });
-
-    container.querySelectorAll('[data-view-run]').forEach((button) => {
-        button.addEventListener('click', () => {
-            state.selectedRunId = Number(button.dataset.viewRun);
-            refreshStatus(state.selectedRunId);
-        });
-    });
-}
-
-function populateRunSnapshot(run) {
-    document.getElementById('runIdValue').textContent = run ? run.id : '-';
-    document.getElementById('runSourceValue').textContent = run ? run.source_label : '-';
-    document.getElementById('runPagesValue').textContent = run
-        ? `${formatNumber(run.last_page_scraped || 0)} / ${run.total_pages ? formatNumber(run.total_pages) : '-'}`
-        : '0 / -';
-    document.getElementById('runSeenValue').textContent = run ? formatNumber(run.total_records_seen || 0) : '0';
-    document.getElementById('runInsertedValue').textContent = run ? formatNumber(run.total_records_inserted || 0) : '0';
-
-    const totalPages = Number(run?.total_pages || 0);
-    const currentPage = Number(run?.last_page_scraped || 0);
-    const percentage = totalPages > 0 ? Math.min(100, Math.round((currentPage / totalPages) * 100)) : 0;
-    document.getElementById('progressBar').style.width = `${percentage}%`;
-    document.getElementById('progressText').textContent = run ? (totalPages > 0 ? `${percentage}%` : humanize(run.status)) : 'Idle';
 }
 
 function renderRuns(runs) {
@@ -510,6 +451,22 @@ function renderRuns(runs) {
     });
 }
 
+function populateRunSnapshot(run) {
+    document.getElementById('runIdValue').textContent = run ? run.id : '-';
+    document.getElementById('runSourceValue').textContent = run ? run.source_label : '-';
+    document.getElementById('runPagesValue').textContent = run
+        ? `${formatNumber(run.last_page_scraped || 0)} / ${run.total_pages ? formatNumber(run.total_pages) : '-'}`
+        : '0 / -';
+    document.getElementById('runSeenValue').textContent = run ? formatNumber(run.total_records_seen || 0) : '0';
+    document.getElementById('runInsertedValue').textContent = run ? formatNumber(run.total_records_inserted || 0) : '0';
+
+    const totalPages = Number(run?.total_pages || 0);
+    const currentPage = Number(run?.last_page_scraped || 0);
+    const percentage = totalPages > 0 ? Math.min(100, Math.round((currentPage / totalPages) * 100)) : 0;
+    document.getElementById('progressBar').style.width = `${percentage}%`;
+    document.getElementById('progressText').textContent = run ? (totalPages > 0 ? `${percentage}%` : humanize(run.status)) : 'Idle';
+}
+
 function renderPreview(preview, runs) {
     const head = document.getElementById('previewHead');
     const body = document.getElementById('previewBody');
@@ -575,8 +532,27 @@ function buildCriteriaRows(run) {
         { label: 'Status', value: humanize(run.status) },
     ];
 
+    [
+        ['ministryId', 'ministryLabel', 'Ministry / Division / Organization'],
+        ['departmentId', 'departmentLabel', 'Department / Organization'],
+        ['officeId', 'officeLabel', 'Procuring Entity'],
+    ].forEach(([idKey, labelKey, label]) => {
+        const idValue = criteria[idKey];
+        const labelValue = criteria[labelKey];
+        if (idValue || labelValue) {
+            rows.push({
+                label,
+                value: labelValue && idValue ? `${labelValue} (ID: ${idValue})` : String(labelValue || idValue || ''),
+            });
+        }
+    });
+
     Object.entries(criteria).forEach(([key, value]) => {
         if (value === '' || value === null || value === undefined) {
+            return;
+        }
+
+        if (['ministryId', 'ministryLabel', 'departmentId', 'departmentLabel', 'officeId', 'officeLabel'].includes(key)) {
             return;
         }
 

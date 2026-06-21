@@ -465,8 +465,33 @@ function normalizeCriteria(string $sourceKey, array $payload): array
 function summarizeCriteria(string $sourceKey, array $criteria): string
 {
     $parts = [];
+    $entityFields = [
+        'ministryId' => 'ministryLabel',
+        'departmentId' => 'departmentLabel',
+        'officeId' => 'officeLabel',
+    ];
+
+    foreach ($entityFields as $idKey => $labelKey) {
+        $idValue = trim((string) ($criteria[$idKey] ?? ''));
+        $labelValue = trim((string) ($criteria[$labelKey] ?? ''));
+        if ($idValue === '' && $labelValue === '') {
+            continue;
+        }
+
+        $fieldLabel = humanizeKey(str_replace('Id', '', $idKey));
+        $displayValue = $labelValue !== '' && $idValue !== ''
+            ? $labelValue . ' (ID: ' . $idValue . ')'
+            : ($labelValue !== '' ? $labelValue : $idValue);
+
+        $parts[] = $fieldLabel . ': ' . $displayValue;
+    }
+
     foreach ($criteria as $key => $value) {
-        if (in_array($key, ['pageSize', 'ministryId', 'departmentId', 'officeId'], true) || $value === '' || $value === null) {
+        if (
+            in_array($key, ['pageSize', 'ministryId', 'ministryLabel', 'departmentId', 'departmentLabel', 'officeId', 'officeLabel'], true)
+            || $value === ''
+            || $value === null
+        ) {
             continue;
         }
         $parts[] = humanizeKey($key) . ': ' . $value;
@@ -533,7 +558,7 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
             'departmentId' => $criteria['departmentId'],
             'viewType' => $criteria['viewType'] ?: 'Live',
             'office' => $criteria['officeId'],
-            'procNature' => $criteria['procurementNature'],
+            'procNature' => mapProcurementNatureValue($criteria['procurementNature']),
             'procType' => '',
             'procMethod' => mapProcurementMethodValue($criteria['procurementMethod']),
             'tenderId' => '',
@@ -554,7 +579,7 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
             'office' => $criteria['officeId'],
             'project' => ' ',
             'financialYear' => $criteria['financialYear'],
-            'budgetType' => $criteria['budgetType'],
+            'budgetType' => mapBudgetTypeValue($criteria['budgetType']),
             'procNature' => $criteria['procurementNature'],
             'procType' => '',
             'appId' => '',
@@ -600,7 +625,7 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
             'departmentId' => $criteria['departmentId'],
             'tenderId' => '',
             'contractAmount' => '',
-            'procurementMethod' => mapProcurementMethodValue($criteria['procurementMethod']),
+            'procurementMethod' => $criteria['procurementMethod'],
             'procurementNature' => $criteria['procurementNature'],
             'contAwrdSearchOpt' => $criteria['contractAwardedToMatch'],
             'exCertSearchOpt' => 'Contains',
@@ -608,6 +633,7 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
             'tendererId' => $criteria['companyUniqueId'],
             'procType' => '',
             'statusTab' => $criteria['tenderType'],
+            'packageType' => mapExperiencePackageTypeValue($criteria['tenderType']),
             'pageNo' => (string) $pageNo,
             'size' => (string) $pageSize,
             'workStatus' => $criteria['workStatus'],
@@ -638,6 +664,41 @@ function mapProcurementMethodValue(string $label): string
     ];
 
     return $map[$label] ?? '';
+}
+
+function mapProcurementNatureValue(string $label): string
+{
+    $map = [
+        'Goods' => '1',
+        'Works' => '2',
+        'Service' => '3',
+        'Physical Services' => '4',
+    ];
+
+    return $map[$label] ?? '';
+}
+
+function mapBudgetTypeValue(string $label): string
+{
+    $map = [
+        'Development' => '1',
+        'Revenue' => '2',
+        'Own fund' => '3',
+    ];
+
+    return $map[$label] ?? '';
+}
+
+function mapExperiencePackageTypeValue(string $label): string
+{
+    $map = [
+        'eTenders' => '1',
+        'eCMS' => '2',
+        'Manual' => '3',
+        'All' => '4',
+    ];
+
+    return $map[$label] ?? '1';
 }
 
 function mapYesNoSelect(string $label, string $emptyLabel): string
@@ -819,7 +880,7 @@ function fetchUrlWithPost(string $url, array $payload): string
 
 function parseResponse(string $sourceKey, string $html, int $pageNo): array
 {
-    if (stripos($html, 'id="noRecordFound"') !== false) {
+    if (stripos($html, 'id="noRecordFound"') !== false || stripos($html, 'No records found') !== false) {
         return ['records' => [], 'totalPages' => 1, 'noRecordFound' => true];
     }
 

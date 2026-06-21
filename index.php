@@ -59,6 +59,7 @@
                         <select id="ministryId" name="ministryId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
                             <option value="">Any</option>
                         </select>
+                        <p id="ministryMeta" class="mt-2 text-xs text-stone-500">No selection</p>
                         <input type="hidden" id="ministryLabel" name="ministryLabel" value="">
                     </div>
 
@@ -67,6 +68,7 @@
                         <select id="departmentId" name="departmentId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
                             <option value="">Any</option>
                         </select>
+                        <p id="departmentMeta" class="mt-2 text-xs text-stone-500">No selection</p>
                         <input type="hidden" id="departmentLabel" name="departmentLabel" value="">
                     </div>
 
@@ -75,6 +77,7 @@
                         <select id="officeId" name="officeId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
                             <option value="">Any</option>
                         </select>
+                        <p id="officeMeta" class="mt-2 text-xs text-stone-500">No selection</p>
                         <input type="hidden" id="officeLabel" name="officeLabel" value="">
                     </div>
 
