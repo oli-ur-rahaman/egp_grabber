@@ -3,8 +3,8 @@
 ## Status
 - Phase 1: Discovery complete
 - Phase 2: Design complete
-- Phase 3: Implementation in progress
-- Phase 4: Verification in progress
+- Phase 3: Implementation complete
+- Phase 4: Verification complete
 
 ## Scope
 Build a web app that can:
@@ -269,3 +269,16 @@ Implementation detail:
 3. `eExperience` keeps `Contract Start Date` available; `Experience Certificate No` is not exposed in the UI.
 4. CSV export is sufficient.
 5. Resume stays on the same run record.
+
+## Verification Notes
+- Exact ministry/department/office lookup is implemented against live e-GP endpoints.
+- Verified `eContract` with:
+  - ministry `20` = `Ministry of Housing and Public Works`
+  - department `21` = `Public Works Department (PWD)`
+  - office `1637` = `Narail PWD Division`
+  - procurement method `LTM`
+  - contract sign dates `03/07/2023` to `21/06/2026`
+- Department-level test returned `2618` pages.
+- Office-level test returned `16` pages and completed on the same run record.
+- Resume test on the same office-level run reconciled page 1, skipped duplicates, and continued from page 2.
+- Per-run CSV export was verified on the completed office-level run.

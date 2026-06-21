@@ -22,6 +22,10 @@ try {
         : strtolower(trim((string) ($_GET['action'] ?? 'status')));
 
     switch ($action) {
+        case 'lookup':
+            lookupOptions();
+            break;
+
         case 'start':
             requirePost($method);
             startRun($pdo);
@@ -347,6 +351,33 @@ function buildStatusPayload(PDO $pdo, ?int $selectedRunId = null): array
     ];
 }
 
+function lookupOptions(): void
+{
+    $type = strtolower(trim((string) ($_GET['type'] ?? '')));
+
+    switch ($type) {
+        case 'top-level':
+            $options = fetchTreeChildren(0);
+            sendJson(['success' => true, 'options' => $options]);
+
+        case 'children':
+            $parentId = (int) ($_GET['parentId'] ?? 0);
+            $options = fetchTreeChildren($parentId);
+            sendJson(['success' => true, 'options' => $options]);
+
+        case 'offices':
+            $departmentId = (int) ($_GET['departmentId'] ?? 0);
+            if ($departmentId < 1) {
+                sendJson(['success' => true, 'options' => []]);
+            }
+            $options = fetchOfficeOptions($departmentId);
+            sendJson(['success' => true, 'options' => $options]);
+
+        default:
+            sendJson(['success' => false, 'error' => 'Unsupported lookup type.'], 400);
+    }
+}
+
 function fetchPreviewRows(PDO $pdo, array $run): array
 {
     $definitions = getSourceDefinitions();
@@ -377,11 +408,18 @@ function decodeCriteria(string $criteriaJson): array
 function normalizeCriteria(string $sourceKey, array $payload): array
 {
     $pageSize = max(1, min(100, (int) ($payload['pageSize'] ?? 10)));
+    $common = [
+        'ministryId' => normalizeOptionalId((string) ($payload['ministryId'] ?? '')),
+        'ministryLabel' => trim((string) ($payload['ministryLabel'] ?? '')),
+        'departmentId' => normalizeOptionalId((string) ($payload['departmentId'] ?? '')),
+        'departmentLabel' => trim((string) ($payload['departmentLabel'] ?? '')),
+        'officeId' => normalizeOptionalId((string) ($payload['officeId'] ?? '')),
+        'officeLabel' => trim((string) ($payload['officeLabel'] ?? '')),
+    ];
 
     return match ($sourceKey) {
-        'eTender' => [
+        'eTender' => $common + [
             'viewType' => normalizeEnum((string) ($payload['viewType'] ?? 'Live'), ['Live', 'Archive', 'Cancelled', 'All'], 'Live'),
-            'procuringEntity' => trim((string) ($payload['procuringEntity'] ?? '')),
             'procurementNature' => normalizeEnum((string) ($payload['procurementNature'] ?? ''), ['Goods', 'Works', 'Service', 'Physical Services'], ''),
             'procurementMethod' => normalizeEnum((string) ($payload['procurementMethod'] ?? ''), procurementMethodLabels(), ''),
             'publishingDateFrom' => normalizeOptionalInputDate((string) ($payload['publishingDateFrom'] ?? '')),
@@ -391,15 +429,13 @@ function normalizeCriteria(string $sourceKey, array $payload): array
             'frameworkAgreement' => normalizeEnum((string) ($payload['frameworkAgreement'] ?? ''), ['Yes', 'No'], ''),
             'pageSize' => $pageSize,
         ],
-        'APP' => [
-            'procuringEntity' => trim((string) ($payload['procuringEntity'] ?? '')),
+        'APP' => $common + [
             'procurementNature' => normalizeEnum((string) ($payload['procurementNature'] ?? ''), ['Goods', 'Works', 'Service', 'Physical Services'], ''),
             'financialYear' => trim((string) ($payload['financialYear'] ?? '')),
             'budgetType' => normalizeEnum((string) ($payload['budgetType'] ?? ''), ['Development', 'Revenue', 'Own fund'], ''),
             'pageSize' => $pageSize,
         ],
-        'eContract' => [
-            'procuringEntity' => trim((string) ($payload['procuringEntity'] ?? '')),
+        'eContract' => $common + [
             'procurementMethod' => normalizeEnum((string) ($payload['procurementMethod'] ?? ''), procurementMethodLabels(), ''),
             'district' => trim((string) ($payload['district'] ?? '')),
             'contractAwardedTo' => trim((string) ($payload['contractAwardedTo'] ?? '')),
@@ -408,8 +444,7 @@ function normalizeCriteria(string $sourceKey, array $payload): array
             'contractSignDateTo' => normalizeOptionalInputDate((string) ($payload['contractSignDateTo'] ?? '')),
             'pageSize' => $pageSize,
         ],
-        'eExperience' => [
-            'procuringEntity' => trim((string) ($payload['procuringEntity'] ?? '')),
+        'eExperience' => $common + [
             'procurementNature' => normalizeEnum((string) ($payload['procurementNature'] ?? ''), ['Goods', 'Works', 'Service', 'Physical Services'], ''),
             'procurementMethod' => normalizeEnum((string) ($payload['procurementMethod'] ?? ''), procurementMethodLabels(), ''),
             'contractStartDateFrom' => normalizeOptionalInputDate((string) ($payload['contractStartDateFrom'] ?? '')),
@@ -431,7 +466,7 @@ function summarizeCriteria(string $sourceKey, array $criteria): string
 {
     $parts = [];
     foreach ($criteria as $key => $value) {
-        if ($key === 'pageSize' || $value === '' || $value === null) {
+        if (in_array($key, ['pageSize', 'ministryId', 'departmentId', 'officeId'], true) || $value === '' || $value === null) {
             continue;
         }
         $parts[] = humanizeKey($key) . ': ' . $value;
@@ -446,6 +481,16 @@ function summarizeCriteria(string $sourceKey, array $criteria): string
     };
 
     return $prefix . ($parts ? ' | ' . implode(' | ', $parts) : '');
+}
+
+function normalizeOptionalId(string $value): string
+{
+    $value = trim($value);
+    if ($value === '' || !ctype_digit($value)) {
+        return '';
+    }
+
+    return $value;
 }
 
 function humanizeKey(string $key): string
@@ -485,9 +530,9 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
     return match ($sourceKey) {
         'eTender' => [
             'funName' => 'AllTenders',
-            'departmentId' => '',
+            'departmentId' => $criteria['departmentId'],
             'viewType' => $criteria['viewType'] ?: 'Live',
-            'office' => '',
+            'office' => $criteria['officeId'],
             'procNature' => $criteria['procurementNature'],
             'procType' => '',
             'procMethod' => mapProcurementMethodValue($criteria['procurementMethod']),
@@ -505,8 +550,8 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
         ],
         'APP' => [
             'action' => 'Search',
-            'departmentId' => '',
-            'office' => '',
+            'departmentId' => $criteria['departmentId'],
+            'office' => $criteria['officeId'],
             'project' => ' ',
             'financialYear' => $criteria['financialYear'],
             'budgetType' => $criteria['budgetType'],
@@ -524,11 +569,11 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
         ],
         'eContract' => [
             'keyword' => '',
-            'officeId' => '0',
+            'officeId' => $criteria['officeId'] !== '' ? $criteria['officeId'] : '0',
             'contractAwardTo' => $criteria['contractAwardedTo'],
             'noaDt' => '',
             'stateName' => $criteria['district'] !== '' ? $criteria['district'] : ' ',
-            'departmentId' => '',
+            'departmentId' => $criteria['departmentId'],
             'tenderId' => '',
             'contractNo' => '',
             'contractDtFrom' => $criteria['contractSignDateFrom'],
@@ -546,13 +591,13 @@ function buildPayload(string $sourceKey, array $criteria, int $pageNo, int $page
             'action' => 'geteCMSList',
             'keyword' => '',
             'expCertNo' => '',
-            'officeId' => '0',
+            'officeId' => $criteria['officeId'] !== '' ? $criteria['officeId'] : '0',
             'contractAwardTo' => $criteria['contractAwardedTo'],
             'contractStartDtFrom' => formatToPortalIso($criteria['contractStartDateFrom']),
             'contractStartDtTo' => formatToPortalIso($criteria['contractStartDateTo']),
             'contractEndDtFrom' => formatToPortalIso($criteria['contractEndDateFrom']),
             'contractEndDtTo' => formatToPortalIso($criteria['contractEndDateTo']),
-            'departmentId' => '',
+            'departmentId' => $criteria['departmentId'],
             'tenderId' => '',
             'contractAmount' => '',
             'procurementMethod' => mapProcurementMethodValue($criteria['procurementMethod']),
@@ -647,6 +692,131 @@ function fetchSourcePage(string $url, array $payload): string
     return $response;
 }
 
+function fetchTreeChildren(int $parentId): array
+{
+    $url = 'https://www.eprocure.gov.bd/getDataForTree?id=' . $parentId . '&showPrNd=false';
+    $response = fetchPlainUrl($url);
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $options = [];
+    foreach ($decoded as $item) {
+        $attr = $item['attr'] ?? [];
+        $rawId = (string) ($attr['id'] ?? '');
+        $id = str_replace('deptid_', '', $rawId);
+        if ($id === '' || !ctype_digit($id)) {
+            continue;
+        }
+
+        $options[] = [
+            'id' => $id,
+            'label' => (string) ($attr['dname'] ?? $item['data'] ?? ''),
+            'type' => (string) ($attr['dtype'] ?? ''),
+            'state' => (string) ($item['state'] ?? ''),
+        ];
+    }
+
+    usort($options, static fn (array $a, array $b): int => strcasecmp($a['label'], $b['label']));
+    return $options;
+}
+
+function fetchOfficeOptions(int $departmentId): array
+{
+    $response = fetchUrlWithPost('https://www.eprocure.gov.bd/ComboServlet', [
+        'departmentId' => (string) $departmentId,
+        'funName' => 'officeCombo',
+    ]);
+
+    $wrapped = '<select>' . $response . '</select>';
+    $dom = new DOMDocument();
+    @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped);
+    $xpath = new DOMXPath($dom);
+    $options = [];
+
+    foreach ($xpath->query('//option') as $node) {
+        if (!$node instanceof DOMElement) {
+            continue;
+        }
+
+        $value = trim($node->getAttribute('value'));
+        $label = cleanNodeText($node);
+
+        if ($value === '' || $value === '0' || $label === '' || str_contains($label, 'Select')) {
+            continue;
+        }
+
+        $options[] = [
+            'id' => $value,
+            'label' => $label,
+        ];
+    }
+
+    usort($options, static fn (array $a, array $b): int => strcasecmp($a['label'], $b['label']));
+    return $options;
+}
+
+function fetchPlainUrl(string $url): string
+{
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => HTTP_HEADERS,
+    ]);
+
+    $response = curl_exec($ch);
+    $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || $error !== '') {
+        throw new RuntimeException('Failed to fetch lookup data: ' . $error);
+    }
+    if ($statusCode !== 200) {
+        throw new RuntimeException('Lookup endpoint returned HTTP ' . $statusCode . '.');
+    }
+
+    return $response;
+}
+
+function fetchUrlWithPost(string $url, array $payload): string
+{
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => http_build_query($payload),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => HTTP_HEADERS,
+    ]);
+
+    $response = curl_exec($ch);
+    $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || $error !== '') {
+        throw new RuntimeException('Failed to fetch office options: ' . $error);
+    }
+    if ($statusCode !== 200) {
+        throw new RuntimeException('Office lookup returned HTTP ' . $statusCode . '.');
+    }
+
+    return $response;
+}
+
 function parseResponse(string $sourceKey, string $html, int $pageNo): array
 {
     if (stripos($html, 'id="noRecordFound"') !== false) {
@@ -703,17 +873,10 @@ function parseResponse(string $sourceKey, string $html, int $pageNo): array
 function applyLocalFilters(string $sourceKey, array $criteria, array $records): array
 {
     return array_values(array_filter($records, static function (array $record) use ($sourceKey, $criteria): bool {
-        $entityNeedle = trim((string) ($criteria['procuringEntity'] ?? ''));
-        if ($entityNeedle !== '') {
-            $haystack = match ($sourceKey) {
-                'eTender' => ($record['ministry_division_organization'] ?? '') . ' ' . ($record['procuring_entity'] ?? ''),
-                'APP' => ($record['ministry_division_organization'] ?? '') . ' ' . ($record['procuring_entity'] ?? ''),
-                'eContract' => ($record['procuring_entity'] ?? ''),
-                'eExperience' => ($record['ministry_division_organization'] ?? '') . ' ' . ($record['procuring_entity'] ?? ''),
-                default => '',
-            };
-
-            if (stripos($haystack, $entityNeedle) === false) {
+        $officeLabel = trim((string) ($criteria['officeLabel'] ?? ''));
+        if ($officeLabel !== '') {
+            $entity = trim((string) ($record['procuring_entity'] ?? ''));
+            if ($entity !== '' && strcasecmp($entity, $officeLabel) !== 0) {
                 return false;
             }
         }
@@ -750,7 +913,23 @@ function insertTenderRecords(PDO $pdo, int $runId, array $records): int
             :procurement_nature, :tender_title, :ministry_division_organization, :procuring_entity,
             :procurement_type, :procurement_method, :publishing_at, :publishing_raw, :closing_at, :closing_raw,
             :detail_url, :record_hash
-        ) ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP"
+        ) ON DUPLICATE KEY UPDATE
+            source_page_no = VALUES(source_page_no),
+            source_row_no = VALUES(source_row_no),
+            reference_no = VALUES(reference_no),
+            tender_status = VALUES(tender_status),
+            procurement_nature = VALUES(procurement_nature),
+            tender_title = VALUES(tender_title),
+            ministry_division_organization = VALUES(ministry_division_organization),
+            procuring_entity = VALUES(procuring_entity),
+            procurement_type = VALUES(procurement_type),
+            procurement_method = VALUES(procurement_method),
+            publishing_at = VALUES(publishing_at),
+            publishing_raw = VALUES(publishing_raw),
+            closing_at = VALUES(closing_at),
+            closing_raw = VALUES(closing_raw),
+            detail_url = VALUES(detail_url),
+            updated_at = CURRENT_TIMESTAMP"
     );
 
     return executeInsertLoop($statement, $runId, $records);
@@ -767,7 +946,22 @@ function insertAppRecords(PDO $pdo, int $runId, array $records): int
             :run_id, :source_page_no, :source_row_no, :app_id, :app_code, :ministry_division_organization,
             :procuring_entity, :district, :procurement_nature, :project_name, :package_no, :package_description,
             :estimated_cost_value, :estimated_cost_raw, :procurement_method, :detail_url, :record_hash
-        ) ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP"
+        ) ON DUPLICATE KEY UPDATE
+            source_page_no = VALUES(source_page_no),
+            source_row_no = VALUES(source_row_no),
+            app_code = VALUES(app_code),
+            ministry_division_organization = VALUES(ministry_division_organization),
+            procuring_entity = VALUES(procuring_entity),
+            district = VALUES(district),
+            procurement_nature = VALUES(procurement_nature),
+            project_name = VALUES(project_name),
+            package_no = VALUES(package_no),
+            package_description = VALUES(package_description),
+            estimated_cost_value = VALUES(estimated_cost_value),
+            estimated_cost_raw = VALUES(estimated_cost_raw),
+            procurement_method = VALUES(procurement_method),
+            detail_url = VALUES(detail_url),
+            updated_at = CURRENT_TIMESTAMP"
     );
 
     return executeInsertLoop($statement, $runId, $records);
@@ -786,7 +980,24 @@ function insertContractRecords(PDO $pdo, int $runId, array $records): int
             :ministry_division, :procuring_entity, :procurement_method, :district, :notification_of_award_date,
             :notification_of_award_raw, :contract_award_to, :contract_value_cr_bdt, :contract_value_raw,
             :advertisement_at, :advertisement_raw, :detail_url, :record_hash
-        ) ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP"
+        ) ON DUPLICATE KEY UPDATE
+            source_page_no = VALUES(source_page_no),
+            source_row_no = VALUES(source_row_no),
+            invitation_ref_no = VALUES(invitation_ref_no),
+            tender_title = VALUES(tender_title),
+            ministry_division = VALUES(ministry_division),
+            procuring_entity = VALUES(procuring_entity),
+            procurement_method = VALUES(procurement_method),
+            district = VALUES(district),
+            notification_of_award_date = VALUES(notification_of_award_date),
+            notification_of_award_raw = VALUES(notification_of_award_raw),
+            contract_award_to = VALUES(contract_award_to),
+            contract_value_cr_bdt = VALUES(contract_value_cr_bdt),
+            contract_value_raw = VALUES(contract_value_raw),
+            advertisement_at = VALUES(advertisement_at),
+            advertisement_raw = VALUES(advertisement_raw),
+            detail_url = VALUES(detail_url),
+            updated_at = CURRENT_TIMESTAMP"
     );
 
     return executeInsertLoop($statement, $runId, $records);
@@ -807,7 +1018,30 @@ function insertExperienceRecords(PDO $pdo, int $runId, array $records): int
             :publishing_date, :publishing_raw, :contract_awarded_to, :company_unique_id, :experience_certificate_no,
             :contract_amount_value, :contract_amount_raw, :contract_start_date, :contract_start_raw,
             :contract_end_date, :contract_end_raw, :work_status, :detail_url, :record_hash
-        ) ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP"
+        ) ON DUPLICATE KEY UPDATE
+            source_page_no = VALUES(source_page_no),
+            source_row_no = VALUES(source_row_no),
+            ministry_division_organization = VALUES(ministry_division_organization),
+            procuring_entity = VALUES(procuring_entity),
+            procurement_nature = VALUES(procurement_nature),
+            procurement_type = VALUES(procurement_type),
+            procurement_method = VALUES(procurement_method),
+            reference_no = VALUES(reference_no),
+            tender_title = VALUES(tender_title),
+            publishing_date = VALUES(publishing_date),
+            publishing_raw = VALUES(publishing_raw),
+            contract_awarded_to = VALUES(contract_awarded_to),
+            company_unique_id = VALUES(company_unique_id),
+            experience_certificate_no = VALUES(experience_certificate_no),
+            contract_amount_value = VALUES(contract_amount_value),
+            contract_amount_raw = VALUES(contract_amount_raw),
+            contract_start_date = VALUES(contract_start_date),
+            contract_start_raw = VALUES(contract_start_raw),
+            contract_end_date = VALUES(contract_end_date),
+            contract_end_raw = VALUES(contract_end_raw),
+            work_status = VALUES(work_status),
+            detail_url = VALUES(detail_url),
+            updated_at = CURRENT_TIMESTAMP"
     );
 
     return executeInsertLoop($statement, $runId, $records);
@@ -867,9 +1101,9 @@ function parseTenderRow(DOMNodeList $cells, int $pageNo, int $rowNo): array
         'procurement_type' => rtrim($typeMethodLines[0] ?? '', ','),
         'procurement_method' => $typeMethodLines[1] ?? '',
         'publishing_at' => parsePortalDateTime($dateLines[0] ?? ''),
-        'publishing_raw' => $dateLines[0] ?? '',
+        'publishing_raw' => trim((string) ($dateLines[0] ?? ''), " \t\n\r\0\x0B,"),
         'closing_at' => parsePortalDateTime($dateLines[1] ?? ''),
-        'closing_raw' => $dateLines[1] ?? '',
+        'closing_raw' => trim((string) ($dateLines[1] ?? ''), " \t\n\r\0\x0B,"),
         'detail_url' => $detailUrl,
     ];
 
@@ -929,12 +1163,21 @@ function parseContractRow(DOMNodeList $cells, int $pageNo, int $rowNo): array
     $entityMethodLines = extractCellLines($cells->item(3));
     $detailUrl = normalizeUrl(firstDescendantByTag($cells->item(2), 'a')?->getAttribute('href') ?? '');
 
+    $advertisementRaw = '';
+    $tenderTitle = '';
+    if (count($detailCellLines) >= 3) {
+        $advertisementRaw = trim((string) $detailCellLines[array_key_last($detailCellLines)], " \t\n\r\0\x0B,");
+        $tenderTitle = trim(implode(' ', array_slice($detailCellLines, 1, -1)));
+    } elseif (count($detailCellLines) === 2) {
+        $tenderTitle = $detailCellLines[1];
+    }
+
     $record = [
         'source_page_no' => $pageNo,
         'source_row_no' => $rowNo,
         'tender_id' => trim(explode(',', $detailCellLines[0] ?? '')[0]),
         'invitation_ref_no' => trim(substr($detailCellLines[0] ?? '', strpos($detailCellLines[0] ?? '', ',') + 1)),
-        'tender_title' => $detailCellLines[1] ?? '',
+        'tender_title' => $tenderTitle,
         'ministry_division' => $ministry,
         'procuring_entity' => $entityMethodLines[0] ?? '',
         'procurement_method' => $entityMethodLines[1] ?? '',
@@ -944,8 +1187,8 @@ function parseContractRow(DOMNodeList $cells, int $pageNo, int $rowNo): array
         'contract_award_to' => cleanNodeText($cells->item(6)),
         'contract_value_cr_bdt' => parseDecimal(cleanNodeText($cells->item(7))),
         'contract_value_raw' => cleanNodeText($cells->item(7)),
-        'advertisement_at' => parsePortalDateTime($detailCellLines[2] ?? ''),
-        'advertisement_raw' => $detailCellLines[2] ?? '',
+        'advertisement_at' => parsePortalDateTime($advertisementRaw),
+        'advertisement_raw' => $advertisementRaw,
         'detail_url' => $detailUrl,
     ];
 

@@ -1,0 +1,137 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - paragraph [ref=e6]: eProcure DB Pipeline
+        - heading "eGP Multi-Source Table Grabber" [level=1] [ref=e7]
+        - paragraph [ref=e8]: "Scrape `eTender`, `APP`, `eContract`, and `eExperience` public search tables into MySQL, resume stopped runs, and export each run separately."
+      - generic [ref=e9]:
+        - generic [ref=e10]: Run Model
+        - generic [ref=e11]: One export per run
+        - generic [ref=e12]: Stopped runs resume on the same record
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - heading "Previous Runs" [level=2] [ref=e16]
+        - paragraph [ref=e17]: Compact run history with quick actions and structured criteria.
+      - generic [ref=e18]: Latest 25 runs
+    - generic [ref=e20]: No runs yet.
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - heading "New Run" [level=2] [ref=e23]
+      - paragraph [ref=e24]: Choose a source, fill the relevant filters, and start scraping.
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Source
+          - combobox "Source" [ref=e28]:
+            - option "eTender"
+            - option "APP"
+            - option "eContract" [selected]
+            - option "eExperience"
+        - generic [ref=e29]:
+          - generic [ref=e30]: Ministry / Division / Organization
+          - combobox "Ministry / Division / Organization" [ref=e31]:
+            - option "Any" [selected]
+        - generic [ref=e32]:
+          - generic [ref=e33]: Department / Organization
+          - combobox "Department / Organization" [ref=e34]:
+            - option "Any" [selected]
+        - generic [ref=e35]:
+          - generic [ref=e36]: Procuring Entity
+          - combobox "Procuring Entity" [ref=e37]:
+            - option "Any" [selected]
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: Procurement Method
+            - combobox "Procurement Method" [ref=e41]:
+              - option "Any" [selected]
+              - option "RFQ"
+              - option "OTM"
+              - option "LTM"
+              - option "TSTM"
+              - option "QCBS"
+              - option "LCS"
+              - option "SFB"
+              - option "DC"
+              - option "SBCQ"
+              - option "SSS"
+              - option "IC"
+              - option "CSO"
+              - option "DPM"
+              - option "OSTETM"
+              - option "RFQU"
+              - option "RFQL"
+          - generic [ref=e42]:
+            - generic [ref=e43]: District
+            - textbox "District" [ref=e44]
+          - generic [ref=e45]:
+            - generic [ref=e46]: Contract Awarded To
+            - textbox "Contract Awarded To" [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]: Framework Agreement
+            - combobox "Framework Agreement" [ref=e50]:
+              - option "Any" [selected]
+              - option "Yes"
+              - option "No"
+          - generic [ref=e51]:
+            - generic [ref=e52]: Contract Sign Date From
+            - textbox "Contract Sign Date From" [ref=e53]: 2023-07-03
+          - generic [ref=e54]:
+            - generic [ref=e55]: Contract Sign Date To
+            - textbox "Contract Sign Date To" [ref=e56]: 2026-06-21
+        - generic [ref=e57]:
+          - generic [ref=e58]: Rows per source page
+          - spinbutton "Rows per source page" [ref=e59]: "10"
+        - generic [ref=e60]:
+          - button "Start Run" [ref=e61]
+          - button "Stop" [disabled] [ref=e62]
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - generic [ref=e65]: Progress
+          - generic [ref=e66]: Idle
+        - paragraph [ref=e68]: No active scrape run.
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - article [ref=e71]:
+          - paragraph [ref=e72]: eTender Rows
+          - paragraph [ref=e73]: "0"
+        - article [ref=e74]:
+          - paragraph [ref=e75]: APP Rows
+          - paragraph [ref=e76]: "0"
+        - article [ref=e77]:
+          - paragraph [ref=e78]: eContract Rows
+          - paragraph [ref=e79]: "0"
+        - article [ref=e80]:
+          - paragraph [ref=e81]: eExperience Rows
+          - paragraph [ref=e82]: "0"
+        - article [ref=e83]:
+          - paragraph [ref=e84]: Active Run
+          - paragraph [ref=e85]: Idle
+      - article [ref=e86]:
+        - heading "Run Snapshot" [level=2] [ref=e87]
+        - paragraph [ref=e88]: Details for the active or selected run.
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - term [ref=e91]: Run ID
+            - definition [ref=e92]: "-"
+          - generic [ref=e93]:
+            - term [ref=e94]: Source
+            - definition [ref=e95]: "-"
+          - generic [ref=e96]:
+            - term [ref=e97]: Pages
+            - definition [ref=e98]: 0 / -
+          - generic [ref=e99]:
+            - term [ref=e100]: Rows Seen
+            - definition [ref=e101]: "0"
+          - generic [ref=e102]:
+            - term [ref=e103]: Rows Inserted
+            - definition [ref=e104]: "0"
+      - article [ref=e105]:
+        - generic [ref=e106]:
+          - heading "Run Preview" [level=2] [ref=e107]
+          - paragraph [ref=e108]: Latest stored rows for the active or selected run.
+        - table [ref=e110]:
+          - rowgroup
+          - rowgroup [ref=e111]:
+            - row "No records imported yet." [ref=e112]:
+              - cell "No records imported yet." [ref=e113]

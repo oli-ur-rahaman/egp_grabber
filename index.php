@@ -29,7 +29,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-bold">Previous Runs</h2>
-                    <p class="text-sm text-stone-500">Recent runs with criteria, status, resume, and per-run export.</p>
+                    <p class="text-sm text-stone-500">Compact run history with quick actions and structured criteria.</p>
                 </div>
                 <div class="text-sm text-stone-500">Latest 25 runs</div>
             </div>
@@ -52,6 +52,30 @@
                             <option value="eContract" selected>eContract</option>
                             <option value="eExperience">eExperience</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label for="ministryId" class="mb-1 block text-sm font-medium text-stone-700">Ministry / Division / Organization</label>
+                        <select id="ministryId" name="ministryId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
+                            <option value="">Any</option>
+                        </select>
+                        <input type="hidden" id="ministryLabel" name="ministryLabel" value="">
+                    </div>
+
+                    <div>
+                        <label for="departmentId" class="mb-1 block text-sm font-medium text-stone-700">Department / Organization</label>
+                        <select id="departmentId" name="departmentId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
+                            <option value="">Any</option>
+                        </select>
+                        <input type="hidden" id="departmentLabel" name="departmentLabel" value="">
+                    </div>
+
+                    <div>
+                        <label for="officeId" class="mb-1 block text-sm font-medium text-stone-700">Procuring Entity</label>
+                        <select id="officeId" name="officeId" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
+                            <option value="">Any</option>
+                        </select>
+                        <input type="hidden" id="officeLabel" name="officeLabel" value="">
                     </div>
 
                     <div id="dynamicFields" class="space-y-4"></div>
@@ -152,6 +176,39 @@
                     </div>
                 </article>
             </section>
+        </div>
+    </div>
+
+    <div id="criteriaModal" class="fixed inset-0 z-50 hidden bg-slate-950/45 px-4 py-6">
+        <div class="mx-auto flex min-h-full max-w-3xl items-center justify-center">
+            <div class="w-full overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-stone-200">
+                <div class="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+                    <div>
+                        <h2 id="criteriaModalTitle" class="text-lg font-bold text-stone-900">Search Criteria</h2>
+                        <p id="criteriaModalSubtitle" class="text-sm text-stone-500">Run details</p>
+                    </div>
+                    <button id="closeCriteriaModalBtn" type="button" class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100">
+                        Close
+                    </button>
+                </div>
+                <div class="px-6 py-5">
+                    <div class="overflow-hidden rounded-2xl border border-stone-200">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="bg-stone-100 text-stone-700">
+                                <tr>
+                                    <th class="w-1/3 px-4 py-3 font-semibold">Field</th>
+                                    <th class="px-4 py-3 font-semibold">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="criteriaModalBody" class="divide-y divide-stone-200 bg-white">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-8 text-center text-stone-400">No criteria loaded.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

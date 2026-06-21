@@ -3,12 +3,12 @@ const state = {
     selectedRunId: null,
     isRunning: false,
     loopHandle: null,
+    topLevelLoaded: false,
 };
 
 const sourceForms = {
     eTender: [
         { type: 'select', name: 'viewType', label: 'Table Tab', options: ['Live', 'Archive', 'Cancelled', 'All'], value: 'Live' },
-        { type: 'text', name: 'procuringEntity', label: 'Procuring Entity (contains)', value: '' },
         { type: 'select', name: 'procurementNature', label: 'Procurement Nature', options: ['', 'Goods', 'Works', 'Service', 'Physical Services'], value: '' },
         { type: 'select', name: 'procurementMethod', label: 'Procurement Method', options: ['', 'RFQ', 'OTM', 'LTM', 'TSTM', 'QCBS', 'LCS', 'SFB', 'DC', 'SBCQ', 'SSS', 'IC', 'CSO', 'DPM', 'OSTETM', 'RFQU', 'RFQL'], value: '' },
         { type: 'text', name: 'publishingDateFrom', label: 'Publishing Date From', value: '' },
@@ -18,13 +18,11 @@ const sourceForms = {
         { type: 'select', name: 'frameworkAgreement', label: 'Framework Agreement', options: ['', 'Yes', 'No'], value: '' },
     ],
     APP: [
-        { type: 'text', name: 'procuringEntity', label: 'Procuring Entity (contains)', value: '' },
         { type: 'select', name: 'procurementNature', label: 'Procurement Nature', options: ['', 'Goods', 'Works', 'Service', 'Physical Services'], value: '' },
         { type: 'text', name: 'financialYear', label: 'Financial Year', value: '2025-2026' },
         { type: 'select', name: 'budgetType', label: 'Budget Type', options: ['', 'Development', 'Revenue', 'Own fund'], value: '' },
     ],
     eContract: [
-        { type: 'text', name: 'procuringEntity', label: 'Procuring Entity (contains)', value: '' },
         { type: 'select', name: 'procurementMethod', label: 'Procurement Method', options: ['', 'RFQ', 'OTM', 'LTM', 'TSTM', 'QCBS', 'LCS', 'SFB', 'DC', 'SBCQ', 'SSS', 'IC', 'CSO', 'DPM', 'OSTETM', 'RFQU', 'RFQL'], value: '' },
         { type: 'text', name: 'district', label: 'District', value: '' },
         { type: 'text', name: 'contractAwardedTo', label: 'Contract Awarded To', value: '' },
@@ -33,7 +31,6 @@ const sourceForms = {
         { type: 'text', name: 'contractSignDateTo', label: 'Contract Sign Date To', value: '21/06/2026' },
     ],
     eExperience: [
-        { type: 'text', name: 'procuringEntity', label: 'Procuring Entity (contains)', value: '' },
         { type: 'select', name: 'procurementNature', label: 'Procurement Nature', options: ['', 'Goods', 'Works', 'Service', 'Physical Services'], value: '' },
         { type: 'select', name: 'procurementMethod', label: 'Procurement Method', options: ['', 'RFQ', 'OTM', 'LTM', 'TSTM', 'QCBS', 'LCS', 'SFB', 'DC', 'SBCQ', 'SSS', 'IC', 'CSO', 'DPM', 'OSTETM', 'RFQU', 'RFQL'], value: '' },
         { type: 'text', name: 'contractStartDateFrom', label: 'Contract Start Date From', value: '' },
@@ -52,12 +49,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const sourceKey = document.getElementById('sourceKey');
     const form = document.getElementById('scraperForm');
     const stopButton = document.getElementById('stopGrabBtn');
+    const ministry = document.getElementById('ministryId');
+    const department = document.getElementById('departmentId');
+    const office = document.getElementById('officeId');
+    const criteriaModal = document.getElementById('criteriaModal');
+    const closeCriteriaModalBtn = document.getElementById('closeCriteriaModalBtn');
 
     sourceKey.addEventListener('change', () => renderDynamicFields(sourceKey.value));
     form.addEventListener('submit', handleStart);
     stopButton.addEventListener('click', handleStop);
+    ministry.addEventListener('change', handleMinistryChange);
+    department.addEventListener('change', handleDepartmentChange);
+    office.addEventListener('change', syncOptionLabels);
+    closeCriteriaModalBtn.addEventListener('click', closeCriteriaModal);
+    criteriaModal.addEventListener('click', (event) => {
+        if (event.target === criteriaModal) {
+            closeCriteriaModal();
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeCriteriaModal();
+        }
+    });
 
     renderDynamicFields(sourceKey.value);
+    loadTopLevelDepartments();
     refreshStatus();
 });
 
@@ -80,7 +97,14 @@ function renderDynamicFields(sourceKey) {
         return `
             <div>
                 <label class="mb-1 block text-sm font-medium text-stone-700" for="${field.name}">${field.label}</label>
-                <input id="${field.name}" name="${field.name}" type="text" value="${escapeAttribute(field.value)}" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600" ${field.name.toLowerCase().includes('date') ? 'placeholder="dd/mm/yyyy"' : ''}>
+                <input
+                    id="${field.name}"
+                    name="${field.name}"
+                    type="${isDateField(field.name) ? 'date' : 'text'}"
+                    value="${escapeAttribute(isDateField(field.name) ? convertDisplayDateToInput(field.value) : field.value)}"
+                    class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600"
+                    ${isDateField(field.name) ? '' : ''}
+                >
             </div>
         `;
     }).join('');
@@ -93,6 +117,7 @@ async function handleStart(event) {
     }
 
     const formData = new FormData(document.getElementById('scraperForm'));
+    normalizeDateFields(formData);
     formData.append('action', 'start');
     setRunningState(true);
     setStatusMessage('Creating a new run...');
@@ -160,6 +185,40 @@ async function resumeRun(runId) {
     }
 }
 
+function normalizeDateFields(formData) {
+    for (const [key, value] of Array.from(formData.entries())) {
+        if (!isDateField(key) || typeof value !== 'string') {
+            continue;
+        }
+
+        formData.set(key, convertInputDateToDisplay(value));
+    }
+}
+
+function isDateField(fieldName) {
+    return fieldName.toLowerCase().includes('date');
+}
+
+function convertDisplayDateToInput(value) {
+    const match = String(value || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) {
+        return '';
+    }
+
+    const [, day, month, year] = match;
+    return `${year}-${month}-${day}`;
+}
+
+function convertInputDateToDisplay(value) {
+    const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+        return String(value || '').trim();
+    }
+
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+}
+
 async function processLoop() {
     if (!state.activeRunId || !state.isRunning) {
         return;
@@ -218,6 +277,71 @@ async function refreshStatus(runId = null) {
     } catch (error) {
         setStatusMessage(error.message || 'Unable to load status.');
     }
+}
+
+async function loadTopLevelDepartments() {
+    if (state.topLevelLoaded) {
+        return;
+    }
+
+    const payload = await fetchJson('api/grabber.php?action=lookup&type=top-level');
+    const ministrySelect = document.getElementById('ministryId');
+    renderSelectOptions(ministrySelect, payload.options || [], 'Any');
+    state.topLevelLoaded = true;
+    syncOptionLabels();
+}
+
+async function handleMinistryChange() {
+    const ministryId = document.getElementById('ministryId').value;
+    const departmentSelect = document.getElementById('departmentId');
+    const officeSelect = document.getElementById('officeId');
+
+    renderSelectOptions(departmentSelect, [], 'Any');
+    renderSelectOptions(officeSelect, [], 'Any');
+    syncOptionLabels();
+
+    if (!ministryId) {
+        return;
+    }
+
+    const payload = await fetchJson(`api/grabber.php?action=lookup&type=children&parentId=${encodeURIComponent(ministryId)}`);
+    renderSelectOptions(departmentSelect, payload.options || [], 'Any');
+    syncOptionLabels();
+}
+
+async function handleDepartmentChange() {
+    const departmentId = document.getElementById('departmentId').value;
+    const officeSelect = document.getElementById('officeId');
+    renderSelectOptions(officeSelect, [], 'Any');
+    syncOptionLabels();
+
+    if (!departmentId) {
+        return;
+    }
+
+    const payload = await fetchJson(`api/grabber.php?action=lookup&type=offices&departmentId=${encodeURIComponent(departmentId)}`);
+    renderSelectOptions(officeSelect, payload.options || [], 'Any');
+    syncOptionLabels();
+}
+
+function renderSelectOptions(selectElement, options, emptyLabel) {
+    selectElement.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + options.map((option) => {
+        const label = option.label || '';
+        return `<option value="${escapeAttribute(option.id)}">${escapeHtml(label)}</option>`;
+    }).join('');
+}
+
+function syncOptionLabels() {
+    syncHiddenLabel('ministryId', 'ministryLabel');
+    syncHiddenLabel('departmentId', 'departmentLabel');
+    syncHiddenLabel('officeId', 'officeLabel');
+}
+
+function syncHiddenLabel(selectId, hiddenId) {
+    const select = document.getElementById(selectId);
+    const hidden = document.getElementById(hiddenId);
+    const option = select.options[select.selectedIndex];
+    hidden.value = select.value && option ? option.text : '';
 }
 
 function renderStatus(payload) {
@@ -312,6 +436,80 @@ function populateRunSnapshot(run) {
     document.getElementById('progressText').textContent = run ? (totalPages > 0 ? `${percentage}%` : humanize(run.status)) : 'Idle';
 }
 
+function renderRuns(runs) {
+    const container = document.getElementById('previousRuns');
+
+    if (!runs.length) {
+        container.innerHTML = '<div class="rounded-2xl border border-dashed border-stone-300 p-5 text-sm text-stone-400">No runs yet.</div>';
+        document.getElementById('activeRunStatus').textContent = 'Idle';
+        populateRunSnapshot(null);
+        return;
+    }
+
+    const activeRun = runs.find((run) => run.status === 'running') || runs[0];
+    document.getElementById('activeRunStatus').textContent = humanize(activeRun.status);
+    const selectedRun = runs.find((run) => Number(run.id) === Number(state.selectedRunId)) || activeRun;
+    populateRunSnapshot(selectedRun);
+
+    container.innerHTML = runs.map((run) => {
+        const isSelected = Number(run.id) === Number(state.selectedRunId);
+        const canResume = run.status === 'stopped';
+        const statusTone = statusToneClasses(run.status, isSelected);
+        const progressLabel = `${formatNumber(run.last_page_scraped || 0)} / ${run.total_pages ? formatNumber(run.total_pages) : '-'}`;
+        const updatedLabel = formatDateTime(run.updated_at || run.finished_at || run.started_at || '');
+
+        return `
+            <article class="rounded-2xl border ${isSelected ? 'border-emerald-500 bg-white shadow-sm' : 'border-stone-200 bg-white'} p-4 transition">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="truncate text-sm font-bold text-stone-900">#${escapeHtml(run.id)} - ${escapeHtml(run.source_label)}</div>
+                            <span class="inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone}">
+                                ${escapeHtml(humanize(run.status))}
+                            </span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+                            <span>Pages ${escapeHtml(progressLabel)}</span>
+                            <span>Inserted ${escapeHtml(formatNumber(run.total_records_inserted || 0))}</span>
+                            <span>Updated ${escapeHtml(updatedLabel || '-')}</span>
+                        </div>
+                    </div>
+                    <button type="button" data-view-run="${escapeAttribute(run.id)}" class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100">
+                        View
+                    </button>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button type="button" data-criteria-run="${escapeAttribute(run.id)}" class="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100">
+                        Search Criteria
+                    </button>
+                    ${canResume ? `<button type="button" data-resume-run="${escapeAttribute(run.id)}" class="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800">Resume</button>` : ''}
+                    <a href="api/export.php?runId=${encodeURIComponent(run.id)}" class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100">Export CSV</a>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    container.querySelectorAll('[data-resume-run]').forEach((button) => {
+        button.addEventListener('click', () => resumeRun(Number(button.dataset.resumeRun)));
+    });
+
+    container.querySelectorAll('[data-view-run]').forEach((button) => {
+        button.addEventListener('click', () => {
+            state.selectedRunId = Number(button.dataset.viewRun);
+            refreshStatus(state.selectedRunId);
+        });
+    });
+
+    container.querySelectorAll('[data-criteria-run]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const run = runs.find((item) => Number(item.id) === Number(button.dataset.criteriaRun));
+            if (run) {
+                openCriteriaModal(run);
+            }
+        });
+    });
+}
+
 function renderPreview(preview, runs) {
     const head = document.getElementById('previewHead');
     const body = document.getElementById('previewBody');
@@ -341,11 +539,73 @@ function renderPreview(preview, runs) {
     `).join('');
 }
 
+function openCriteriaModal(run) {
+    const modal = document.getElementById('criteriaModal');
+    const title = document.getElementById('criteriaModalTitle');
+    const subtitle = document.getElementById('criteriaModalSubtitle');
+    const body = document.getElementById('criteriaModalBody');
+    const rows = buildCriteriaRows(run);
+
+    title.textContent = `Search Criteria - Run #${run.id}`;
+    subtitle.textContent = `${run.source_label} | ${humanize(run.status)}`;
+    body.innerHTML = rows.length
+        ? rows.map((row) => `
+            <tr>
+                <td class="px-4 py-3 font-medium text-stone-600">${escapeHtml(row.label)}</td>
+                <td class="px-4 py-3 text-stone-900">${escapeHtml(row.value)}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="2" class="px-4 py-8 text-center text-stone-400">No criteria saved for this run.</td></tr>';
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeCriteriaModal() {
+    const modal = document.getElementById('criteriaModal');
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function buildCriteriaRows(run) {
+    const criteria = run.criteria || {};
+    const rows = [
+        { label: 'Run ID', value: String(run.id) },
+        { label: 'Source', value: run.source_label || '' },
+        { label: 'Status', value: humanize(run.status) },
+    ];
+
+    Object.entries(criteria).forEach(([key, value]) => {
+        if (value === '' || value === null || value === undefined) {
+            return;
+        }
+
+        if (key.endsWith('Id')) {
+            const labelKey = `${key.slice(0, -2)}Label`;
+            if (criteria[labelKey]) {
+                return;
+            }
+        }
+
+        rows.push({
+            label: humanizeKeyJs(key),
+            value: String(value),
+        });
+    });
+
+    return rows;
+}
+
 async function postForm(formData) {
     const response = await fetch('api/grabber.php', {
         method: 'POST',
         body: formData,
     });
+    return response.json();
+}
+
+async function fetchJson(url) {
+    const response = await fetch(url, { method: 'GET' });
     return response.json();
 }
 
@@ -378,12 +638,47 @@ function formatNumber(value) {
     return new Intl.NumberFormat().format(Number(value || 0));
 }
 
+function formatDateTime(value) {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+    }).format(date);
+}
+
 function humanize(value) {
     if (!value) {
         return 'Idle';
     }
 
     return String(value).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function humanizeKeyJs(value) {
+    return humanize(String(value).replace(/([a-z])([A-Z])/g, '$1 $2'));
+}
+
+function statusToneClasses(status, isSelected) {
+    if (status === 'running') {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+    if (status === 'completed') {
+        return 'bg-sky-100 text-sky-800';
+    }
+    if (status === 'stopped') {
+        return isSelected ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-700';
+    }
+
+    return 'bg-stone-100 text-stone-700';
 }
 
 function escapeHtml(value) {

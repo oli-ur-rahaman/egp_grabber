@@ -1,0 +1,256 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - paragraph [ref=e6]: eProcure DB Pipeline
+          - heading "eGP Multi-Source Table Grabber" [level=1] [ref=e7]
+          - paragraph [ref=e8]: "Scrape `eTender`, `APP`, `eContract`, and `eExperience` public search tables into MySQL, resume stopped runs, and export each run separately."
+        - generic [ref=e9]:
+          - generic [ref=e10]: Run Model
+          - generic [ref=e11]: One export per run
+          - generic [ref=e12]: Stopped runs resume on the same record
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - heading "Previous Runs" [level=2] [ref=e16]
+          - paragraph [ref=e17]: Compact run history with quick actions and structured criteria.
+        - generic [ref=e18]: Latest 25 runs
+      - article [ref=e114]:
+        - generic [ref=e115]:
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - generic [ref=e118]: "#7 - eTender"
+              - generic [ref=e119]: Stopped
+            - generic [ref=e120]:
+              - generic [ref=e121]: Pages 397 / -
+              - generic [ref=e122]: Inserted 0
+              - generic [ref=e123]: Updated Jun 22, 2026
+          - button "View" [ref=e124]
+        - generic [ref=e125]:
+          - button "Search Criteria" [active] [ref=e126]
+          - button "Resume" [ref=e127]
+          - link "Export CSV" [ref=e128] [cursor=pointer]:
+            - /url: api/export.php?runId=7
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "New Run" [level=2] [ref=e23]
+        - paragraph [ref=e24]: Choose a source, fill the relevant filters, and start scraping.
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Source
+            - combobox "Source" [ref=e28]:
+              - option "eTender"
+              - option "APP"
+              - option "eContract" [selected]
+              - option "eExperience"
+          - generic [ref=e29]:
+            - generic [ref=e30]: Ministry / Division / Organization
+            - combobox "Ministry / Division / Organization" [ref=e31]:
+              - option "Any" [selected]
+              - option "Anti-Corruption Commission"
+              - option "Bangladesh Parliament Secretariat"
+              - option "Cabinet Division"
+              - option "Election Commission Secretariat"
+              - option "Ministry of Agriculture"
+              - option "Ministry of chittagong Hill Tract's Affairs"
+              - option "Ministry of Civil Aviation & Tourism"
+              - option "Ministry of Commerce"
+              - option "Ministry of Cultural Affairs"
+              - option "Ministry of Defence"
+              - option "Ministry of Disaster Management & Relief"
+              - option "Ministry of Education"
+              - option "Ministry of Energy, Power and Mineral Resources"
+              - option "Ministry of Environment, Forest and Climate Change"
+              - option "Ministry of Expatriates' Welfare and Overseas Employment"
+              - option "Ministry of Finance"
+              - option "Ministry of Fisheries & Livestock"
+              - option "Ministry of Food"
+              - option "Ministry of Foreign Affairs"
+              - option "Ministry of Health and Family Welfare"
+              - option "Ministry of Home Affairs"
+              - option "Ministry of Housing and Public Works"
+              - option "Ministry of Industries"
+              - option "Ministry of Information And Broadcasting"
+              - option "Ministry of Labour and Employment"
+              - option "Ministry of Land"
+              - option "Ministry of Law, Justice and Parliamentary Affairs"
+              - option "Ministry of Liberation War Affairs"
+              - option "Ministry of Local Government, Rural Development and Co-operatives"
+              - option "Ministry of Planning"
+              - option "Ministry of Post, Telecommunications & Information Technology"
+              - option "Ministry of Primary and Mass Education"
+              - option "Ministry of Public Administration"
+              - option "Ministry of Railways"
+              - option "Ministry of Religious Affairs"
+              - option "Ministry of Road Transport and Bridges"
+              - option "Ministry of Science and Technology"
+              - option "Ministry of Shipping"
+              - option "Ministry of Social Welfare"
+              - option "Ministry of Textiles & Jute"
+              - option "Ministry of Water Resources"
+              - option "Ministry of Women and Children Affairs"
+              - option "Ministry of Youth & Sports"
+              - option "Office of the Comptroller and Auditor General of Bangladesh"
+              - option "President's Office"
+              - option "Prime Minister's Office"
+              - option "Supreme Court of Bangladesh"
+          - generic [ref=e32]:
+            - generic [ref=e33]: Department / Organization
+            - combobox "Department / Organization" [ref=e34]:
+              - option "Any" [selected]
+          - generic [ref=e35]:
+            - generic [ref=e36]: Procuring Entity
+            - combobox "Procuring Entity" [ref=e37]:
+              - option "Any" [selected]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - generic [ref=e40]: Procurement Method
+              - combobox "Procurement Method" [ref=e41]:
+                - option "Any" [selected]
+                - option "RFQ"
+                - option "OTM"
+                - option "LTM"
+                - option "TSTM"
+                - option "QCBS"
+                - option "LCS"
+                - option "SFB"
+                - option "DC"
+                - option "SBCQ"
+                - option "SSS"
+                - option "IC"
+                - option "CSO"
+                - option "DPM"
+                - option "OSTETM"
+                - option "RFQU"
+                - option "RFQL"
+            - generic [ref=e42]:
+              - generic [ref=e43]: District
+              - textbox "District" [ref=e44]
+            - generic [ref=e45]:
+              - generic [ref=e46]: Contract Awarded To
+              - textbox "Contract Awarded To" [ref=e47]
+            - generic [ref=e48]:
+              - generic [ref=e49]: Framework Agreement
+              - combobox "Framework Agreement" [ref=e50]:
+                - option "Any" [selected]
+                - option "Yes"
+                - option "No"
+            - generic [ref=e51]:
+              - generic [ref=e52]: Contract Sign Date From
+              - textbox "Contract Sign Date From" [ref=e53]: 2023-07-03
+            - generic [ref=e54]:
+              - generic [ref=e55]: Contract Sign Date To
+              - textbox "Contract Sign Date To" [ref=e56]: 2026-06-21
+          - generic [ref=e57]:
+            - generic [ref=e58]: Rows per source page
+            - spinbutton "Rows per source page" [ref=e59]: "10"
+          - generic [ref=e60]:
+            - button "Start Run" [ref=e61]
+            - button "Stop" [disabled] [ref=e62]
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e65]: Progress
+            - generic [ref=e66]: Stopped
+          - paragraph [ref=e68]: No active scrape run.
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - article [ref=e71]:
+            - paragraph [ref=e72]: eTender Rows
+            - paragraph [ref=e73]: "0"
+          - article [ref=e74]:
+            - paragraph [ref=e75]: APP Rows
+            - paragraph [ref=e76]: "0"
+          - article [ref=e77]:
+            - paragraph [ref=e78]: eContract Rows
+            - paragraph [ref=e79]: "0"
+          - article [ref=e80]:
+            - paragraph [ref=e81]: eExperience Rows
+            - paragraph [ref=e82]: "0"
+          - article [ref=e83]:
+            - paragraph [ref=e84]: Active Run
+            - paragraph [ref=e85]: Stopped
+        - article [ref=e86]:
+          - heading "Run Snapshot" [level=2] [ref=e87]
+          - paragraph [ref=e88]: Details for the active or selected run.
+          - generic [ref=e89]:
+            - generic [ref=e90]:
+              - term [ref=e91]: Run ID
+              - definition [ref=e92]: "7"
+            - generic [ref=e93]:
+              - term [ref=e94]: Source
+              - definition [ref=e95]: eTender
+            - generic [ref=e96]:
+              - term [ref=e97]: Pages
+              - definition [ref=e98]: 397 / -
+            - generic [ref=e99]:
+              - term [ref=e100]: Rows Seen
+              - definition [ref=e101]: "0"
+            - generic [ref=e102]:
+              - term [ref=e103]: Rows Inserted
+              - definition [ref=e104]: "0"
+        - article [ref=e105]:
+          - generic [ref=e106]:
+            - heading "Run Preview" [level=2] [ref=e107]
+            - paragraph [ref=e108]: Latest stored rows for the active or selected run.
+          - table [ref=e110]:
+            - rowgroup [ref=e129]:
+              - row "Tender ID Reference Title Procuring Entity Method Published Closing" [ref=e130]:
+                - columnheader "Tender ID" [ref=e131]
+                - columnheader "Reference" [ref=e132]
+                - columnheader "Title" [ref=e133]
+                - columnheader "Procuring Entity" [ref=e134]
+                - columnheader "Method" [ref=e135]
+                - columnheader "Published" [ref=e136]
+                - columnheader "Closing" [ref=e137]
+            - rowgroup [ref=e111]:
+              - row "No records stored for eTender yet." [ref=e138]:
+                - cell "No records stored for eTender yet." [ref=e139]
+  - generic [ref=e142]:
+    - generic [ref=e143]:
+      - generic [ref=e144]:
+        - 'heading "Search Criteria - Run #7" [level=2] [ref=e145]'
+        - paragraph [ref=e146]: eTender | Stopped
+      - button "Close" [ref=e147]
+    - table [ref=e150]:
+      - rowgroup [ref=e151]:
+        - row "Field Value" [ref=e152]:
+          - columnheader "Field" [ref=e153]
+          - columnheader "Value" [ref=e154]
+      - rowgroup [ref=e155]:
+        - row "Run ID 7" [ref=e156]:
+          - cell "Run ID" [ref=e157]
+          - cell "7" [ref=e158]
+        - row "Source eTender" [ref=e159]:
+          - cell "Source" [ref=e160]
+          - cell "eTender" [ref=e161]
+        - row "Status Stopped" [ref=e162]:
+          - cell "Status" [ref=e163]
+          - cell "Stopped" [ref=e164]
+        - row "Ministry Label Ministry of Housing and Public Works" [ref=e165]:
+          - cell "Ministry Label" [ref=e166]
+          - cell "Ministry of Housing and Public Works" [ref=e167]
+        - row "Department Label Public Works Department (PWD)" [ref=e168]:
+          - cell "Department Label" [ref=e169]
+          - cell "Public Works Department (PWD)" [ref=e170]
+        - row "Office Label Sylhet PWD Division" [ref=e171]:
+          - cell "Office Label" [ref=e172]
+          - cell "Sylhet PWD Division" [ref=e173]
+        - row "View Type Live" [ref=e174]:
+          - cell "View Type" [ref=e175]
+          - cell "Live" [ref=e176]
+        - row "Procurement Nature Works" [ref=e177]:
+          - cell "Procurement Nature" [ref=e178]
+          - cell "Works" [ref=e179]
+        - row "Procurement Method OTM" [ref=e180]:
+          - cell "Procurement Method" [ref=e181]
+          - cell "OTM" [ref=e182]
+        - row "Publishing Date From 01/03/2026" [ref=e183]:
+          - cell "Publishing Date From" [ref=e184]
+          - cell "01/03/2026" [ref=e185]
+        - row "Publishing Date To 21/06/2026" [ref=e186]:
+          - cell "Publishing Date To" [ref=e187]
+          - cell "21/06/2026" [ref=e188]
+        - row "Page Size 10" [ref=e189]:
+          - cell "Page Size" [ref=e190]
+          - cell "10" [ref=e191]
