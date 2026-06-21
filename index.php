@@ -3,61 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eGP PWD LTM Grabber</title>
+    <title>eGP Multi-Source Grabber</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="min-h-screen bg-stone-100 text-stone-900">
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header class="mb-8 rounded-3xl bg-[linear-gradient(135deg,#0f172a,#1f2937_45%,#14532d)] p-6 text-white shadow-xl">
+        <header class="rounded-3xl bg-[linear-gradient(135deg,#0f172a,#1f2937_45%,#14532d)] p-6 text-white shadow-xl">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200">eProcure DB Pipeline</p>
-                    <h1 class="mt-2 text-3xl font-black tracking-tight">PWD LTM Contract Table Grabber</h1>
+                    <h1 class="mt-2 text-3xl font-black tracking-tight">eGP Multi-Source Table Grabber</h1>
                     <p class="mt-3 max-w-3xl text-sm text-slate-200">
-                        Imports every paginated row from the public e-GP awarded contracts search into MySQL and exports the stored dataset on demand.
+                        Scrape `eTender`, `APP`, `eContract`, and `eExperience` public search tables into MySQL, resume stopped runs, and export each run separately.
                     </p>
                 </div>
                 <div class="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm backdrop-blur">
-                    <div class="font-semibold">Fixed Source Filters</div>
-                    <div class="mt-1 text-slate-200">Department: Public Works Department (ID 21)</div>
-                    <div class="text-slate-200">Method: LTM</div>
+                    <div class="font-semibold">Run Model</div>
+                    <div class="mt-1 text-slate-200">One export per run</div>
+                    <div class="text-slate-200">Stopped runs resume on the same record</div>
                 </div>
             </div>
         </header>
 
-        <div class="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <section class="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-bold">Previous Runs</h2>
+                    <p class="text-sm text-stone-500">Recent runs with criteria, status, resume, and per-run export.</p>
+                </div>
+                <div class="text-sm text-stone-500">Latest 25 runs</div>
+            </div>
+            <div id="previousRuns" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div class="rounded-2xl border border-dashed border-stone-300 p-5 text-sm text-stone-400">No runs yet.</div>
+            </div>
+        </section>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
             <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-                <h2 class="text-lg font-bold">Run Controls</h2>
-                <p class="mt-1 text-sm text-stone-500">Start a fresh scrape run for the selected contract signing date range.</p>
+                <h2 class="text-lg font-bold">New Run</h2>
+                <p class="mt-1 text-sm text-stone-500">Choose a source, fill the relevant filters, and start scraping.</p>
 
                 <form id="scraperForm" class="mt-6 space-y-4">
                     <div>
-                        <label for="contractDtFrom" class="mb-1 block text-sm font-medium text-stone-700">Contract sign date from</label>
-                        <input id="contractDtFrom" name="contractDtFrom" type="text" value="03/07/2023" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 font-mono text-sm outline-none ring-0 transition focus:border-emerald-600" placeholder="dd/mm/yyyy">
+                        <label for="sourceKey" class="mb-1 block text-sm font-medium text-stone-700">Source</label>
+                        <select id="sourceKey" name="sourceKey" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-600">
+                            <option value="eTender">eTender</option>
+                            <option value="APP">APP</option>
+                            <option value="eContract" selected>eContract</option>
+                            <option value="eExperience">eExperience</option>
+                        </select>
                     </div>
 
-                    <div>
-                        <label for="contractDtTo" class="mb-1 block text-sm font-medium text-stone-700">Contract sign date to</label>
-                        <input id="contractDtTo" name="contractDtTo" type="text" value="21/06/2026" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 font-mono text-sm outline-none ring-0 transition focus:border-emerald-600" placeholder="dd/mm/yyyy">
-                    </div>
+                    <div id="dynamicFields" class="space-y-4"></div>
 
                     <div>
-                        <label for="size" class="mb-1 block text-sm font-medium text-stone-700">Rows per source page</label>
-                        <input id="size" name="size" type="number" min="1" max="100" value="10" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 font-mono text-sm outline-none ring-0 transition focus:border-emerald-600">
+                        <label for="pageSize" class="mb-1 block text-sm font-medium text-stone-700">Rows per source page</label>
+                        <input id="pageSize" name="pageSize" type="number" min="1" max="100" value="10" class="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 font-mono text-sm outline-none transition focus:border-emerald-600">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 pt-2">
                         <button id="startGrabBtn" type="submit" class="rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800">
-                            Start Import
+                            Start Run
                         </button>
                         <button id="stopGrabBtn" type="button" class="rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50" disabled>
                             Stop
                         </button>
                     </div>
-
-                    <a href="api/export.php" class="block rounded-2xl border border-stone-300 bg-stone-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-black">
-                        Export Stored Data
-                    </a>
                 </form>
 
                 <div class="mt-6 rounded-2xl bg-stone-100 p-4">
@@ -73,33 +84,41 @@
             </section>
 
             <section class="space-y-6">
-                <div class="grid gap-4 sm:grid-cols-3">
+                <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
                     <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
-                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Stored Rows</p>
-                        <p id="statTotalRecords" class="mt-3 text-3xl font-black text-stone-900">0</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">eTender Rows</p>
+                        <p id="count-eTender" class="mt-3 text-2xl font-black text-stone-900">0</p>
                     </article>
                     <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
-                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Unique Tenders</p>
-                        <p id="statTotalTenders" class="mt-3 text-3xl font-black text-stone-900">0</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">APP Rows</p>
+                        <p id="count-APP" class="mt-3 text-2xl font-black text-stone-900">0</p>
                     </article>
                     <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
-                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Current Run</p>
-                        <p id="statRunStatus" class="mt-3 text-xl font-bold text-stone-900">Idle</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">eContract Rows</p>
+                        <p id="count-eContract" class="mt-3 text-2xl font-black text-stone-900">0</p>
+                    </article>
+                    <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">eExperience Rows</p>
+                        <p id="count-eExperience" class="mt-3 text-2xl font-black text-stone-900">0</p>
+                    </article>
+                    <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Active Run</p>
+                        <p id="activeRunStatus" class="mt-3 text-lg font-bold text-stone-900">Idle</p>
                     </article>
                 </div>
 
                 <article class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h2 class="text-lg font-bold">Run Snapshot</h2>
-                            <p class="text-sm text-stone-500">Latest scrape metadata and import counters.</p>
-                        </div>
-                    </div>
+                    <h2 class="text-lg font-bold">Run Snapshot</h2>
+                    <p class="mt-1 text-sm text-stone-500">Details for the active or selected run.</p>
 
-                    <dl class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <dl class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                         <div class="rounded-2xl bg-stone-100 p-4">
                             <dt class="text-xs font-semibold uppercase tracking-wide text-stone-500">Run ID</dt>
                             <dd id="runIdValue" class="mt-2 text-lg font-bold text-stone-900">-</dd>
+                        </div>
+                        <div class="rounded-2xl bg-stone-100 p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-stone-500">Source</dt>
+                            <dd id="runSourceValue" class="mt-2 text-lg font-bold text-stone-900">-</dd>
                         </div>
                         <div class="rounded-2xl bg-stone-100 p-4">
                             <dt class="text-xs font-semibold uppercase tracking-wide text-stone-500">Pages</dt>
@@ -118,26 +137,15 @@
 
                 <article class="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200">
                     <div class="border-b border-stone-200 px-6 py-4">
-                        <h2 class="text-lg font-bold">Latest Stored Records</h2>
-                        <p class="text-sm text-stone-500">Recent rows imported into `eprocure_db.contract_records`.</p>
+                        <h2 class="text-lg font-bold">Run Preview</h2>
+                        <p class="text-sm text-stone-500">Latest stored rows for the active or selected run.</p>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-left text-sm">
-                            <thead class="bg-stone-100 text-stone-700">
+                            <thead id="previewHead" class="bg-stone-100 text-stone-700"></thead>
+                            <tbody id="previewBody" class="divide-y divide-stone-200 bg-white">
                                 <tr>
-                                    <th class="px-4 py-3 font-semibold">Tender ID</th>
-                                    <th class="px-4 py-3 font-semibold">Reference</th>
-                                    <th class="px-4 py-3 font-semibold">Title</th>
-                                    <th class="px-4 py-3 font-semibold">Procuring Entity</th>
-                                    <th class="px-4 py-3 font-semibold">District</th>
-                                    <th class="px-4 py-3 font-semibold">NOA Date</th>
-                                    <th class="px-4 py-3 font-semibold">Award To</th>
-                                    <th class="px-4 py-3 font-semibold">Value</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recordsTableBody" class="divide-y divide-stone-200 bg-white">
-                                <tr>
-                                    <td colspan="8" class="px-4 py-8 text-center text-stone-400">No records imported yet.</td>
+                                    <td class="px-4 py-8 text-center text-stone-400">No records imported yet.</td>
                                 </tr>
                             </tbody>
                         </table>
