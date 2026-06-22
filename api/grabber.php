@@ -1226,7 +1226,19 @@ function parseContractRow(DOMNodeList $cells, int $pageNo, int $rowNo): array
 
     $advertisementRaw = '';
     $tenderTitle = '';
-    if (count($detailCellLines) >= 3) {
+    $advertisementLineIndex = findLastMatchingLineIndex($detailCellLines, '/^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}$/');
+
+    if ($advertisementLineIndex !== null) {
+        $advertisementRaw = trim((string) $detailCellLines[$advertisementLineIndex], " \t\n\r\0\x0B,");
+        $titleLines = [];
+        foreach ($detailCellLines as $index => $line) {
+            if ($index === 0 || $index === $advertisementLineIndex) {
+                continue;
+            }
+            $titleLines[] = $line;
+        }
+        $tenderTitle = trim(implode(' ', $titleLines));
+    } elseif (count($detailCellLines) >= 3) {
         $advertisementRaw = trim((string) $detailCellLines[array_key_last($detailCellLines)], " \t\n\r\0\x0B,");
         $tenderTitle = trim(implode(' ', array_slice($detailCellLines, 1, -1)));
     } elseif (count($detailCellLines) === 2) {
@@ -1334,6 +1346,17 @@ function splitFirstLineAtComma(string $value): array
 {
     $parts = explode(',', $value, 2);
     return [trim($parts[0] ?? ''), trim($parts[1] ?? '')];
+}
+
+function findLastMatchingLineIndex(array $lines, string $pattern): ?int
+{
+    for ($index = count($lines) - 1; $index >= 0; $index--) {
+        if (preg_match($pattern, (string) $lines[$index]) === 1) {
+            return $index;
+        }
+    }
+
+    return null;
 }
 
 function cleanNodeText(?DOMNode $node): string

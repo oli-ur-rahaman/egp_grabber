@@ -170,7 +170,47 @@ try {
             CONSTRAINT fk_exp_run FOREIGN KEY (source_run_id) REFERENCES egp_scrape_runs(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset}"
     );
+
+    ensureNullableTextColumn($pdo, 'egp_contract_records', 'notification_of_award_raw');
+    ensureNullableTextColumn($pdo, 'egp_contract_records', 'contract_value_raw');
+    ensureNullableTextColumn($pdo, 'egp_contract_records', 'advertisement_raw');
+
+    ensureNullableTextColumn($pdo, 'egp_tender_records', 'publishing_raw');
+    ensureNullableTextColumn($pdo, 'egp_tender_records', 'closing_raw');
+
+    ensureNullableTextColumn($pdo, 'egp_app_records', 'estimated_cost_raw');
+
+    ensureNullableTextColumn($pdo, 'egp_experience_records', 'publishing_raw');
+    ensureNullableTextColumn($pdo, 'egp_experience_records', 'contract_amount_raw');
+    ensureNullableTextColumn($pdo, 'egp_experience_records', 'contract_start_raw');
+    ensureNullableTextColumn($pdo, 'egp_experience_records', 'contract_end_raw');
 } catch (PDOException $exception) {
     http_response_code(500);
     exit('Database connection failed: ' . $exception->getMessage());
+}
+
+function ensureNullableTextColumn(PDO $pdo, string $table, string $column): void
+{
+    $statement = $pdo->prepare(
+        "SELECT DATA_TYPE
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :table_name
+           AND COLUMN_NAME = :column_name"
+    );
+    $statement->execute([
+        ':table_name' => $table,
+        ':column_name' => $column,
+    ]);
+
+    $dataType = strtolower((string) $statement->fetchColumn());
+    if ($dataType === 'text' || $dataType === 'mediumtext' || $dataType === 'longtext') {
+        return;
+    }
+
+    $pdo->exec(sprintf(
+        'ALTER TABLE `%s` MODIFY COLUMN `%s` TEXT NULL',
+        str_replace('`', '``', $table),
+        str_replace('`', '``', $column)
+    ));
 }
